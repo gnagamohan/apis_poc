@@ -53,6 +53,9 @@ Stop: `docker compose down` (add `-v` to wipe the database and pgAdmin volumes).
 
 ## Authentication
 
+In the browser, **http://localhost/signup** creates an account and **http://localhost/login** logs in and shows
+the token with a Copy button. Both pages are static files in `nginx/html` that call the endpoints below.
+
 1. (Once) `POST http://localhost/auth/signup` with `{"email": "...", "password": "..."}` creates an account and
    returns `201 {"id", "email", "createdAt"}`.
    - The email is trimmed and lower-cased; a duplicate (in any letter case) gives `409`.

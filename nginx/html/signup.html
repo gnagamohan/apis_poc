@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create an account</title>
+  <style>
+    :root { --fg: #222; --muted: #666; --bg: #fff; --line: #ddd; --code: #f3f3f3; --accent: #1f6feb; --err: #c62828; --ok: #2e7d32; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fg: #e6e6e6; --muted: #9a9a9a; --bg: #161616; --line: #333; --code: #242424; --accent: #4c8dff; --err: #ef5350; --ok: #66bb6a; }
+    }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 48px auto; padding: 0 16px; color: var(--fg); background: var(--bg); }
+    h1 { font-size: 1.6rem; margin-bottom: 4px; }
+    p.sub { color: var(--muted); margin-top: 0; }
+    a { color: var(--accent); }
+    .card { border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin: 16px 0; }
+    label { display: block; font-weight: 600; margin: 12px 0 4px; }
+    input { width: 100%; padding: 8px 10px; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+    input[aria-invalid="true"] { border-color: var(--err); }
+    .hint { color: var(--muted); font-size: .85rem; margin: 4px 0 0; }
+    .hint.err { color: var(--err); }
+    button, a.button { display: inline-block; font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; margin-top: 16px; text-decoration: none; }
+    button:disabled { opacity: .6; cursor: default; }
+    .msg { margin-top: 12px; min-height: 1.2em; }
+    .err { color: var(--err); }
+    .ok { color: var(--ok); }
+    .muted { color: var(--muted); font-size: .9rem; }
+    code { background: var(--code); padding: 1px 4px; border-radius: 4px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>Create an account</h1>
+  <p class="sub">Register to keep your own to-do list. <a href="/">Back to home</a></p>
+
+  <form id="signup" class="card" autocomplete="on" novalidate>
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" required autocomplete="email">
+
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required autocomplete="new-password" aria-describedby="pwHint">
+    <p id="pwHint" class="hint">At least 8 characters (max 72 bytes).</p>
+
+    <label for="confirm">Confirm password</label>
+    <input id="confirm" name="confirm" type="password" required autocomplete="new-password" aria-describedby="confirmHint">
+    <p id="confirmHint" class="hint"></p>
+
+    <button id="submit" type="submit">Create account</button>
+    <div id="msg" class="msg" role="status"></div>
+    <p class="muted">Already have an account? <a id="loginLink" href="/login">Log in</a></p>
+  </form>
+
+  <section id="done" class="card" hidden>
+    <strong class="ok">Account created</strong>
+    <p>You can now log in as <code id="doneEmail"></code>.</p>
+    <a id="continue" class="button" href="/login">Log in</a>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const bytes = (s) => new TextEncoder().encode(s).length;
+
+    // Keep a pending terminal login (loopback callback + state) when moving between sign-up and login.
+    // The login page re-validates the callback, so we only pass these two values through.
+    const params = new URLSearchParams(location.search);
+    function loginUrl(email) {
+      const q = new URLSearchParams();
+      for (const k of ['callback', 'state']) if (params.get(k)) q.set(k, params.get(k));
+      if (email) q.set('email', email);
+      const s = q.toString();
+      return '/login' + (s ? '?' + s : '');
+    }
+    $('loginLink').href = loginUrl(params.get('email') || '');
+    if (params.get('email')) $('email').value = params.get('email');
+
+    function check() {
+      const email = $('email').value.trim();
+      const pw = $('password').value, confirm = $('confirm').value;
+      const errors = {};
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email address.';
+      if ([...pw].length < 8) errors.password = 'Password must be at least 8 characters.';
+      else if (bytes(pw) > 72) errors.password = 'Password is too long (max 72 bytes, now ' + bytes(pw) + ').';
+      if (confirm && confirm !== pw) errors.confirm = 'Passwords don’t match.';
+      else if (!confirm) errors.confirm = 'Type the password again.';
+      return errors;
+    }
+
+    function show(errors, touchedOnly) {
+      const touched = (id) => !touchedOnly || $(id).dataset.touched;
+      $('email').setAttribute('aria-invalid', !!(errors.email && touched('email')));
+      $('password').setAttribute('aria-invalid', !!(errors.password && touched('password')));
+      $('confirm').setAttribute('aria-invalid', !!(errors.confirm && touched('confirm')));
+      const pwErr = errors.password && touched('password');
+      $('pwHint').textContent = pwErr ? errors.password : 'At least 8 characters (max 72 bytes).';
+      $('pwHint').className = 'hint' + (pwErr ? ' err' : '');
+      const cErr = errors.confirm && touched('confirm') && $('confirm').value;
+      $('confirmHint').textContent = cErr ? errors.confirm : '';
+      $('confirmHint').className = 'hint' + (cErr ? ' err' : '');
+    }
+
+    for (const id of ['email', 'password', 'confirm']) {
+      $(id).addEventListener('blur', () => { $(id).dataset.touched = '1'; show(check(), true); });
+      $(id).addEventListener('input', () => show(check(), true));
+    }
+
+    $('signup').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = $('msg');
+      const errors = check();
+      if (Object.keys(errors).length) {
+        for (const id of ['email', 'password', 'confirm']) $(id).dataset.touched = '1';
+        show(errors, false);
+        msg.className = 'msg err'; msg.textContent = Object.values(errors)[0];
+        return;
+      }
+      msg.className = 'msg'; msg.textContent = 'Creating your account...';
+      $('submit').disabled = true;
+      try {
+        const res = await fetch('/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: $('email').value.trim(), password: $('password').value })
+        });
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 409) throw new Error('An account with this email already exists. Log in instead.');
+        if (!res.ok) throw new Error(body.detail || ('Sign-up failed (HTTP ' + res.status + ').'));
+        $('password').value = ''; $('confirm').value = '';
+        $('signup').hidden = true;
+        $('doneEmail').textContent = body.email;
+        $('continue').href = loginUrl(body.email);
+        $('done').hidden = false;
+        $('continue').focus();
+      } catch (err) {
+        msg.className = 'msg err'; msg.textContent = err.message;
+      } finally {
+        $('submit').disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
