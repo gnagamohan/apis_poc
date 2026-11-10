@@ -1,0 +1,29 @@
+$kind: http-request
+url: '{{baseUrl}}/auth/login'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{userEmail}}",
+      "password": "{{userPassword}}"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    function jwtPart(token, i) {
+      const b64 = token.split('.')[i].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(b64 + '='.repeat((4 - b64.length % 4) % 4)));
+    }
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const body = pm.response.json();
+    pm.test('Bearer token valid for 10 minutes', () => {
+      pm.expect(body.token_type).to.eql('Bearer');
+      pm.expect(body.expires_in).to.eql(600);
+    });
+    pm.test('JWT carries the email claim', () => pm.expect(jwtPart(body.access_token, 1).email).to.eql(pm.collectionVariables.get('userEmail').toLowerCase()));
+    pm.collectionVariables.set('accessToken', body.access_token);
+  language: text/javascript
+order: 1000

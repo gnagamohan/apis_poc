@@ -1,0 +1,21 @@
+$kind: http-request
+name: notifications/initialized
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "method": "notifications/initialized"
+    }
+scripts:
+- type: afterResponse
+  code: pm.test('202 Accepted, no body', () => { pm.response.to.have.status(202); pm.expect(pm.response.text()).to.eql(''); });
+  language: text/javascript
+order: 3000

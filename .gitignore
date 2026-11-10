@@ -1,0 +1,29 @@
+# Local secrets (template: .env.example)
+.env
+
+# Build output
+target/
+project/project/
+dist/
+build/
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# IDE / tooling
+.idea/
+.vscode/
+.bsp/
+.metals/
+.bloop/
+*.iml
+
+# Logs and OS files
+logs/
+*.log
+.DS_Store
+Thumbs.db

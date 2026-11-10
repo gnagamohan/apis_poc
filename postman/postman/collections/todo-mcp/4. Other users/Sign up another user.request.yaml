@@ -1,0 +1,19 @@
+$kind: http-request
+url: '{{baseUrl}}/auth/signup'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "other.{{$timestamp}}{{$randomInt}}@example.com",
+      "password": "other-password-1"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('201 Created', () => pm.response.to.have.status(201));
+    pm.collectionVariables.set('otherEmail', pm.response.json().email);
+  language: text/javascript
+order: 3000

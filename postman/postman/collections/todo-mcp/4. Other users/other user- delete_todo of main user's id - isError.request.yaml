@@ -1,0 +1,27 @@
+$kind: http-request
+name: 'other user: delete_todo of main user''s id -> isError'
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{otherToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 32,
+      "method": "tools/call",
+      "params": { "name": "delete_todo", "arguments": { "id": {{mcpIsoId}} } }
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const res = pm.response.json();
+    pm.test('JSON-RPC result', () => { pm.expect(res.jsonrpc).to.eql('2.0'); pm.expect(res).to.have.property('result'); });
+    pm.test('Not found for the other user', () => pm.expect(res.result.isError).to.eql(true));
+  language: text/javascript
+order: 6000

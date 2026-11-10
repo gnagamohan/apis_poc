@@ -1,0 +1,14 @@
+# Use this workspace to collaborate
+workspace:
+  id: ea671c04-6326-477e-8721-63b0a7653c3f
+
+localResources:
+  collections: []
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/todo-service: 167543a1-3747-4486-9ce3-5aaa060dff80
+    ../postman/collections/todo-mcp: 790a903c-dc30-47eb-96a3-a0dfdbab2570
+    ../postman/collections/auth-service: aaf4e607-88d2-4ecf-b8dd-856310cefc04

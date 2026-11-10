@@ -1,0 +1,13 @@
+$kind: http-request
+name: 'Main user: todo is unchanged'
+url: '{{baseUrl}}/api/todos/{{isoTodoId}}'
+method: GET
+headers:
+  Authorization: Bearer {{accessToken}}
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    pm.test('Not modified by the other user', () => { const t = pm.response.json(); pm.expect(t.title).to.eql('Private to the main user'); pm.expect(t.completed).to.eql(false); });
+  language: text/javascript
+order: 9000

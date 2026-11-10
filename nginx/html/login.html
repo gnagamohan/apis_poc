@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Get a token</title>
+  <style>
+    :root { --fg: #222; --muted: #666; --bg: #fff; --line: #ddd; --code: #f3f3f3; --accent: #1f6feb; --err: #c62828; --ok: #2e7d32; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fg: #e6e6e6; --muted: #9a9a9a; --bg: #161616; --line: #333; --code: #242424; --accent: #4c8dff; --err: #ef5350; --ok: #66bb6a; }
+    }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 48px auto; padding: 0 16px; color: var(--fg); background: var(--bg); }
+    h1 { font-size: 1.6rem; margin-bottom: 4px; }
+    p.sub { color: var(--muted); margin-top: 0; }
+    a { color: var(--accent); }
+    .card { border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin: 16px 0; }
+    label { display: block; font-weight: 600; margin: 12px 0 4px; }
+    input { width: 100%; padding: 8px 10px; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+    button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; margin-top: 16px; }
+    button.secondary { background: transparent; color: var(--accent); }
+    button:disabled { opacity: .6; cursor: default; }
+    textarea { width: 100%; height: 110px; font-family: ui-monospace, monospace; font-size: .85rem; padding: 8px; color: var(--fg); background: var(--code); border: 1px solid var(--line); border-radius: 6px; resize: vertical; word-break: break-all; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .msg { margin-top: 12px; min-height: 1.2em; }
+    .err { color: var(--err); }
+    .ok { color: var(--ok); }
+    .muted { color: var(--muted); font-size: .9rem; }
+    code { background: var(--code); padding: 1px 4px; border-radius: 4px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>Get a token</h1>
+  <p class="sub">Log in to get a JWT for <code>/mcp</code> and <code>/api/todos</code>. <a href="/">Back to home</a></p>
+
+  <div id="handoff" class="card" hidden>
+    <strong>A terminal app is waiting for this login</strong>
+    <p class="muted" style="margin-bottom:0">After you log in, the token is sent to <code id="handoffTarget"></code> on this computer. If you didn't start a login from a terminal, close this tab.</p>
+  </div>
+
+  <form id="login" class="card" autocomplete="on">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" required autocomplete="username" value="demo@example.com">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required autocomplete="current-password">
+    <button id="submit" type="submit">Log in</button>
+    <div id="msg" class="msg" role="status"></div>
+    <p class="muted">Forgot it? Request a reset with <code>POST /auth/password-reset/request</code>, then read the email in <a href="/mailpit/">Mailpit</a>.</p>
+  </form>
+
+  <section id="result" class="card" hidden>
+    <strong>Your token</strong>
+    <p id="expiry" class="muted"></p>
+    <textarea id="token" readonly></textarea>
+    <div class="row">
+      <button id="copy" type="button">Copy token</button>
+      <button id="copyHeader" type="button" class="secondary">Copy as Authorization header</button>
+      <span id="copied" class="ok"></span>
+    </div>
+    <p class="muted">The token stays on this page only. It's not saved anywhere, so reloading the page clears it.</p>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let timer = null, expiresAt = 0;
+
+    // Optional hand-off to a local CLI (loopback login): ?callback=http://127.0.0.1:<port>/callback&state=...
+    // Only loopback callbacks on /callback are accepted, so the token can't be sent anywhere else.
+    const params = new URLSearchParams(location.search);
+    const callback = loopbackCallback(params.get('callback'));
+    const state = params.get('state') || '';
+    if (params.get('email')) $('email').value = params.get('email');
+    if (callback && state) {
+      $('handoff').hidden = false;
+      $('handoffTarget').textContent = new URL(callback).host;
+      $('password').focus();
+    }
+
+    function loopbackCallback(raw) {
+      try {
+        const u = new URL(raw);
+        const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname);
+        if (u.protocol === 'http:' && loopback && u.port && u.pathname === '/callback'
+            && !u.search && !u.hash && !u.username && !u.password) return u.href;
+      } catch {}
+      return null;
+    }
+
+    function handOff(token, expiresIn) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = callback;
+      for (const [name, value] of Object.entries({ token, expires_in: String(expiresIn), state })) {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = name; input.value = value;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
+    }
+
+    $('login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = $('msg');
+      msg.className = 'msg'; msg.textContent = 'Logging in...';
+      $('submit').disabled = true;
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: $('email').value.trim(), password: $('password').value })
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body.access_token) {
+          throw new Error(res.status === 401 ? 'Wrong email or password.' : (body.detail || ('Login failed (HTTP ' + res.status + ').')));
+        }
+        $('password').value = '';
+        if (callback && state) {
+          msg.className = 'msg ok'; msg.textContent = 'Logged in. Sending the token to the terminal...';
+          handOff(body.access_token, body.expires_in || 600);
+          return;
+        }
+        showToken(body.access_token, body.expires_in || 600);
+        msg.className = 'msg ok'; msg.textContent = 'Logged in.';
+      } catch (err) {
+        msg.className = 'msg err'; msg.textContent = err.message;
+      } finally {
+        $('submit').disabled = false;
+      }
+    });
+
+    function showToken(token, expiresIn) {
+      $('token').value = token;
+      $('result').hidden = false;
+      $('copied').textContent = '';
+      expiresAt = Date.now() + expiresIn * 1000;
+      clearInterval(timer);
+      tick(); timer = setInterval(tick, 1000);
+    }
+
+    function tick() {
+      const left = Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
+      const at = new Date(expiresAt).toLocaleTimeString();
+      if (left === 0) {
+        clearInterval(timer);
+        $('expiry').innerHTML = '<span class="err">Expired at ' + at + '. Log in again for a new token.</span>';
+      } else {
+        const m = Math.floor(left / 60), s = String(left % 60).padStart(2, '0');
+        $('expiry').textContent = 'Expires at ' + at + ' (' + m + ':' + s + ' left).';
+      }
+    }
+
+    async function copy(text) {
+      try { await navigator.clipboard.writeText(text); }
+      catch { $('token').select(); document.execCommand('copy'); }
+      $('copied').textContent = 'Copied';
+      setTimeout(() => { $('copied').textContent = ''; }, 2000);
+    }
+    $('copy').addEventListener('click', () => copy($('token').value));
+    $('copyHeader').addEventListener('click', () => copy('Authorization: Bearer ' + $('token').value));
+  </script>
+</body>
+</html>

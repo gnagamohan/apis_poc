@@ -1,0 +1,216 @@
+name: apis-poc
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TODO_DB_NAME: ${TODO_DB_NAME}
+      TODO_DB_USER: ${TODO_DB_USER}
+      TODO_DB_PASSWORD: ${TODO_DB_PASSWORD}
+      AUTH_DB_NAME: ${AUTH_DB_NAME}
+      AUTH_DB_USER: ${AUTH_DB_USER}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    expose:
+      - "5432"            # internal only - NOT published to localhost
+    networks: [db-todo, db-auth, db-admin]   # one private link per DB client
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${TODO_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_PROXY_X_HOST_COUNT: 1
+      PGADMIN_CONFIG_PROXY_X_PREFIX_COUNT: 1
+      # No login screen (desktop mode) and no master-password prompt
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      # Let servers.json supply the DB password via PasswordExecCommand
+      PGADMIN_CONFIG_ENABLE_SERVER_PASS_EXEC_CMD: "True"
+      PG_SUPERUSER_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    expose:
+      - "80"
+    networks: [admin, db-admin]   # reached only by nginx; talks only to postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/misc/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  todo-service:
+    build: ./todo-service
+    image: apis-poc/todo-service:latest
+    container_name: todo-service
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${TODO_DB_NAME}
+      DB_USER: ${TODO_DB_USER}
+      DB_PASSWORD: ${TODO_DB_PASSWORD}
+    expose:
+      - "8080"            # internal only
+    networks: [gw-todo, db-todo]   # reached only by the gateway; talks only to postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  todo-mcp:
+    build: ./todo-mcp
+    image: apis-poc/todo-mcp:latest
+    container_name: todo-mcp
+    restart: unless-stopped
+    environment:
+      TODO_API_BASE_URL: http://gateway:8080/api/todos
+      PLAY_HTTP_SECRET_KEY: ${PLAY_HTTP_SECRET_KEY}
+    expose:
+      - "9000"            # internal only
+    networks: [gw-mcp]    # reached only by the gateway; calls the REST API only via the gateway
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  auth-service:
+    build: ./auth-service
+    image: apis-poc/auth-service:latest
+    container_name: auth-service
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${AUTH_DB_NAME}
+      DB_USER: ${AUTH_DB_USER}
+      DB_PASSWORD: ${AUTH_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SEED_USER_EMAIL: ${AUTH_SEED_USER_EMAIL}
+      AUTH_SEED_USER_PASSWORD: ${AUTH_SEED_USER_PASSWORD}
+      PLAY_HTTP_SECRET_KEY: ${PLAY_HTTP_SECRET_KEY}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      PUBLIC_BASE_URL: http://localhost
+    expose:
+      - "9000"            # internal only
+    networks: [gw-auth, db-auth, mail-smtp]   # reached only by the gateway; talks to postgres and mailpit (SMTP)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    container_name: mailpit
+    restart: unless-stopped
+    environment:
+      MP_WEBROOT: mailpit          # UI and API served under /mailpit/ (behind nginx)
+      MP_MAX_MESSAGES: 1000
+    expose:
+      - "1025"            # SMTP, internal only
+      - "8025"            # web UI + API, internal only
+    networks: [mail-smtp, mail-ui]   # receives mail from auth-service; UI reached only by nginx
+
+  gateway:
+    build: ./gateway
+    image: apis-poc/gateway:latest
+    container_name: gateway
+    restart: unless-stopped
+    environment:
+      TODO_SERVICE_URI: http://todo-service:8080
+      TODO_MCP_URI: http://todo-mcp:9000
+      AUTH_SERVICE_URI: http://auth-service:9000
+      JWT_SECRET: ${JWT_SECRET}
+    expose:
+      - "8080"            # internal only
+    networks: [edge, gw-todo, gw-mcp, gw-auth]   # the only path to the services
+    depends_on:
+      todo-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${NGINX_PORT:-80}:80"   # single entry point, bound to localhost only
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+    networks: [edge, admin, mail-ui]   # reaches the gateway, pgAdmin and the Mailpit UI only
+    depends_on:
+      gateway:
+        condition: service_healthy
+      todo-mcp:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      pgadmin:
+        condition: service_healthy
+
+# Each network links exactly two tiers, so a service can only reach what it needs.
+# APIs and MCP tools are reachable only through the gateway; no service can call another directly.
+networks:
+  edge:         # nginx <-> gateway (the only non-internal network; publishes port 80)
+  admin:        # nginx <-> pgadmin
+    internal: true
+  gw-todo:      # gateway <-> todo-service
+    internal: true
+  gw-mcp:       # gateway <-> todo-mcp
+    internal: true
+  gw-auth:      # gateway <-> auth-service
+    internal: true
+  db-todo:      # todo-service <-> postgres
+    internal: true
+  db-auth:      # auth-service <-> postgres
+    internal: true
+  db-admin:     # pgadmin <-> postgres
+    internal: true
+  mail-smtp:    # auth-service -> mailpit (SMTP)
+    internal: true
+  mail-ui:      # nginx <-> mailpit web UI / API
+    internal: true
+
+volumes:
+  pg-data:
+  pgadmin-data:

@@ -1,0 +1,31 @@
+$kind: http-request
+url: '{{baseUrl}}/api/todos'
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: json
+  content: |-
+    {
+      "title": "Buy milk",
+      "description": "2 litres, semi-skimmed",
+      "completed": false
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('201 Created', () => pm.response.to.have.status(201));
+    const body = pm.response.json();
+    pm.test('Returns the new todo', () => {
+      pm.expect(body.id).to.be.a('number');
+      pm.expect(body.title).to.eql('Buy milk');
+      pm.expect(body.completed).to.eql(false);
+      pm.expect(body.ownerEmail).to.eql(pm.collectionVariables.get('userEmail').toLowerCase());
+    });
+    pm.test('Location header points to the new todo', () => {
+      pm.expect(pm.response.headers.get('Location')).to.match(new RegExp('/api/todos/' + body.id + '$'));
+    });
+    pm.collectionVariables.set('todoId', body.id);
+  language: text/javascript
+order: 2000

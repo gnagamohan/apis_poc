@@ -1,0 +1,23 @@
+$kind: http-request
+name: foreign Origin -> 403
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+  Origin: http://evil.example
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 24,
+      "method": "ping"
+    }
+scripts:
+- type: afterResponse
+  code: pm.test('403 Forbidden', () => pm.response.to.have.status(403));
+  language: text/javascript
+order: 7000

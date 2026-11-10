@@ -1,0 +1,27 @@
+$kind: http-request
+name: get_todo (deleted -> isError)
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 15,
+      "method": "tools/call",
+      "params": { "name": "get_todo", "arguments": { "id": {{mcpTodoId}} } }
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const res = pm.response.json();
+    pm.test('JSON-RPC result', () => { pm.expect(res.jsonrpc).to.eql('2.0'); pm.expect(res).to.have.property('result'); });
+    pm.test('Tool error: not found', () => { pm.expect(res.result.isError).to.eql(true); pm.expect(res.result.content[0].text).to.include('not found'); });
+  language: text/javascript
+order: 6000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: '{{baseUrl}}/auth/signup'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "resetEmail.{{$timestamp}}{{$randomInt}}@example.com",
+      "password": "original-pass-1"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('201 Created', () => pm.response.to.have.status(201));
+    pm.collectionVariables.set('resetEmail', pm.response.json().email);
+  language: text/javascript
+order: 1000

@@ -1,0 +1,11 @@
+$kind: http-request
+name: 'Other user: delete main user''s todo (404)'
+url: '{{baseUrl}}/api/todos/{{isoTodoId}}'
+method: DELETE
+headers:
+  Authorization: Bearer {{otherToken}}
+scripts:
+- type: afterResponse
+  code: pm.test('404 Not Found', () => pm.response.to.have.status(404));
+  language: text/javascript
+order: 7000

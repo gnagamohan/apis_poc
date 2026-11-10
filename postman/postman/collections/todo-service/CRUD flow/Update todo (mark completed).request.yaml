@@ -1,0 +1,21 @@
+$kind: http-request
+url: '{{baseUrl}}/api/todos/{{todoId}}'
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: json
+  content: |-
+    {
+      "title": "Buy milk",
+      "description": "2 litres, semi-skimmed",
+      "completed": true
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    pm.test('Is completed', () => pm.expect(pm.response.json().completed).to.eql(true));
+  language: text/javascript
+order: 5000

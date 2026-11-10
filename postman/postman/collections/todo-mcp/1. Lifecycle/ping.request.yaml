@@ -1,0 +1,25 @@
+$kind: http-request
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "ping"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const res = pm.response.json();
+    pm.test('JSON-RPC result', () => { pm.expect(res.jsonrpc).to.eql('2.0'); pm.expect(res).to.have.property('result'); });
+    pm.test('Empty result', () => pm.expect(res.result).to.eql({}));
+  language: text/javascript
+order: 4000

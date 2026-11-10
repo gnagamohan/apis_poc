@@ -1,0 +1,20 @@
+$kind: collection
+description: |-
+  To-do REST API: nginx -> Spring Cloud Gateway (JWT required) -> todo-service.
+
+  Run **CRUD flow** top to bottom (or the whole collection with the Collection Runner). **Login** signs in with `userEmail` / `userPassword` and stores the JWT in `accessToken`; every request sends it as a Bearer token. Tokens expire after 10 minutes: re-run **Login** when requests start returning 401. **Create todo** stores the new id in `todoId` for the later requests. To-dos are saved with, and limited to, the logged-in user's email (`ownerEmail`).
+
+  **Other users** signs up a fresh user (unique email per run; not deleted) and checks they get 404 for the main user's to-do and can't change it.
+variables:
+  baseUrl: http://localhost
+  todoId: '1'
+  isoTodoId: ''
+  userEmail: demo@example.com
+  userPassword: demo-password
+  accessToken: ''
+  otherEmail: ''
+  otherToken: ''
+scripts:
+- type: http:afterResponse
+  code: pm.test('Response time < 2s', () => pm.expect(pm.response.responseTime).to.be.below(2000));
+  language: text/javascript

@@ -1,0 +1,32 @@
+$kind: http-request
+name: tools/list
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/list"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const res = pm.response.json();
+    pm.test('JSON-RPC result', () => { pm.expect(res.jsonrpc).to.eql('2.0'); pm.expect(res).to.have.property('result'); });
+    const names = res.result.tools.map(t => t.name);
+    pm.test('Exposes the 5 todo tools', () => pm.expect(names).to.have.members(['list_todos','get_todo','create_todo','update_todo','delete_todo']));
+    pm.test('Every tool has a description and object inputSchema', () => res.result.tools.forEach(t => {
+      pm.expect(t.description).to.be.a('string').and.not.empty;
+      pm.expect(t.inputSchema.type).to.eql('object');
+    }));
+    pm.test('delete_todo is marked destructive', () => pm.expect(res.result.tools.find(t => t.name === 'delete_todo').annotations.destructiveHint).to.eql(true));
+  language: text/javascript
+order: 5000

@@ -1,0 +1,32 @@
+$kind: collection
+description: |-
+  auth-service (Play, Java): nginx /auth/** -> gateway (public) -> auth-service.
+
+  - `POST /auth/login` with `{"email", "password"}` returns `{access_token, token_type: "Bearer", expires_in: 600}`. The JWT is HS256-signed and carries the `email` claim; it is valid for 10 minutes.
+  - `POST /auth/signup` with `{"email", "password"}` (password 8-72 bytes) returns `201 {id, email, createdAt}`, or `409` if the email is already registered.
+
+  - `POST /auth/password-reset/request` `{"email"}` always returns `202`; if the account exists, a one-time token (valid 15 minutes) is emailed. `POST /auth/password-reset/confirm` `{"token", "newPassword"}` returns `204`.
+  - `POST /auth/password/change` (JWT required) `{"currentPassword", "newPassword"}` returns `204`.
+
+  Set `userEmail` / `userPassword` (defaults: the seed user from `.env`). **Login - success** stores the token in `accessToken`. **Using the token** shows how the gateway treats tokens. **Sign up**, **Forgot password** and **Change password** each create a new, uniquely named user on every run (they are not deleted), so the seed user's password is never changed. The password folders read emails from Mailpit (`/mailpit/api/v1/...`) and retry for a few seconds when run in the Collection Runner or newman.
+variables:
+  userEmail: demo@example.com
+  userPassword: demo-password
+  accessToken: ""
+  baseUrl: http://localhost
+  userEmailUpper: ""
+  tamperedToken: ""
+  signupEmail: ""
+  signupPassword: ""
+  signupEmailUpper: ""
+  signupToken: ""
+  resetEmail: ""
+  resetMessageId: ""
+  resetToken: ""
+  changeEmail: ""
+  changeToken: ""
+  changedMessageId: ""
+scripts:
+  - type: http:afterResponse
+    code: pm.test('Response time < 2s', () => pm.expect(pm.response.responseTime).to.be.below(2000));
+    language: text/javascript

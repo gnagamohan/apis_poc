@@ -1,0 +1,13 @@
+$kind: http-request
+url: '{{baseUrl}}/api/todos'
+method: GET
+headers:
+  Authorization: Bearer {{accessToken}}
+  X-User-Email: someone.else@example.com
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    pm.test('Still only my todos', () => pm.response.json().forEach(t => pm.expect(t.ownerEmail).to.eql(pm.collectionVariables.get('userEmail').toLowerCase())));
+  language: text/javascript
+order: 4000

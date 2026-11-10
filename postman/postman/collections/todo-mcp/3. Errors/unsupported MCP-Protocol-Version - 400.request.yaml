@@ -1,0 +1,22 @@
+$kind: http-request
+name: unsupported MCP-Protocol-Version -> 400
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+  MCP-Protocol-Version: '1999-01-01'
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 25,
+      "method": "ping"
+    }
+scripts:
+- type: afterResponse
+  code: pm.test('400', () => pm.response.to.have.status(400));
+  language: text/javascript
+order: 8000

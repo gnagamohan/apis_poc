@@ -1,0 +1,11 @@
+$kind: http-request
+name: 'Other user: get main user''s todo (404)'
+url: '{{baseUrl}}/api/todos/{{isoTodoId}}'
+method: GET
+headers:
+  Authorization: Bearer {{otherToken}}
+scripts:
+- type: afterResponse
+  code: pm.test('404 Not Found', () => pm.response.to.have.status(404));
+  language: text/javascript
+order: 5000

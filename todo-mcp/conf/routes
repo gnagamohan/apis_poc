@@ -1,0 +1,6 @@
+# MCP Streamable HTTP endpoint (JSON responses, no server-initiated SSE stream)
+POST    /mcp        controllers.McpController.post(request: Request)
+GET     /mcp        controllers.McpController.methodNotAllowed()
+DELETE  /mcp        controllers.McpController.methodNotAllowed()
+
+GET     /health     controllers.McpController.health()

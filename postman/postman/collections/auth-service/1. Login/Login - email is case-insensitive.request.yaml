@@ -1,0 +1,26 @@
+$kind: http-request
+url: '{{baseUrl}}/auth/login'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "  {{userEmailUpper}}  ",
+      "password": "{{userPassword}}"
+    }
+scripts:
+- type: beforeRequest
+  code: pm.collectionVariables.set('userEmailUpper', pm.collectionVariables.get('userEmail').toUpperCase());
+  language: text/javascript
+- type: afterResponse
+  code: |-
+    function jwtPart(token, i) {
+      const b64 = token.split('.')[i].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(b64 + '='.repeat((4 - b64.length % 4) % 4)));
+    }
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    pm.test('email claim is normalised to lower case', () => pm.expect(jwtPart(pm.response.json().access_token, 1).email).to.eql(pm.collectionVariables.get('userEmail').toLowerCase()));
+  language: text/javascript
+order: 2000

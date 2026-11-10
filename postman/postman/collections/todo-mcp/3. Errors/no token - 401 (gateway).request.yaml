@@ -1,0 +1,20 @@
+$kind: http-request
+name: no token -> 401 (gateway)
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 19,
+      "method": "tools/list"
+    }
+scripts:
+- type: afterResponse
+  code: pm.test('401 Unauthorized', () => pm.response.to.have.status(401));
+  language: text/javascript
+order: 1000

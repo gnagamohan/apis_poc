@@ -1,0 +1,29 @@
+$kind: http-request
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 11,
+      "method": "tools/call",
+      "params": { "name": "get_todo", "arguments": { "id": {{mcpTodoId}} } }
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const res = pm.response.json();
+    pm.test('JSON-RPC result', () => { pm.expect(res.jsonrpc).to.eql('2.0'); pm.expect(res).to.have.property('result'); });
+    const r = res.result;
+    pm.test('Tool succeeded', () => pm.expect(r.isError).to.eql(false));
+    pm.test('Text content mirrors structuredContent', () => pm.expect(JSON.parse(r.content[0].text)).to.eql(r.structuredContent));
+    pm.test('Same todo', () => { pm.expect(r.structuredContent.id).to.eql(Number(pm.collectionVariables.get('mcpTodoId'))); pm.expect(r.structuredContent.title).to.eql('Try the MCP server'); });
+  language: text/javascript
+order: 2000

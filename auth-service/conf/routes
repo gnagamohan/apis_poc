@@ -1,0 +1,11 @@
+POST    /login                      controllers.AuthController.login(request: Request)
+POST    /signup                     controllers.AuthController.signup(request: Request)
+
+# Forgot password (public): emails a one-time token, then set a new password with it
+POST    /password-reset/request     controllers.PasswordController.requestReset(request: Request)
+POST    /password-reset/confirm     controllers.PasswordController.confirmReset(request: Request)
+
+# Change password (JWT required at the gateway; user from X-User-Email)
+POST    /password/change            controllers.PasswordController.change(request: Request)
+
+GET     /health                     controllers.AuthController.health()

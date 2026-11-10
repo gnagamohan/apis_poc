@@ -1,0 +1,18 @@
+$kind: http-request
+url: '{{baseUrl}}/auth/password-reset/request'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "nobody.at.all@example.com"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('202 Accepted', () => pm.response.to.have.status(202));
+    pm.test('Same message whether or not the account exists', () => pm.expect(pm.response.json().message).to.eql('If an account exists for this email, a password reset token has been sent to it.'));
+  language: text/javascript
+order: 3000

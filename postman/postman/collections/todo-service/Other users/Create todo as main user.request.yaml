@@ -1,0 +1,19 @@
+$kind: http-request
+url: '{{baseUrl}}/api/todos'
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: json
+  content: |-
+    {
+      "title": "Private to the main user"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('201 Created', () => pm.response.to.have.status(201));
+    pm.collectionVariables.set('isoTodoId', pm.response.json().id);
+  language: text/javascript
+order: 2000

@@ -1,0 +1,14 @@
+$kind: http-request
+name: GET /mcp -> 405 (no SSE stream)
+url: '{{baseUrl}}/mcp'
+method: GET
+headers:
+  Accept: text/event-stream
+  Authorization: Bearer {{accessToken}}
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('405', () => pm.response.to.have.status(405));
+    pm.test('Allow: POST', () => pm.expect(pm.response.headers.get('Allow')).to.eql('POST'));
+  language: text/javascript
+order: 9000

@@ -1,0 +1,34 @@
+$kind: http-request
+name: 'other user: list_todos shows only their own'
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{otherToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 33,
+      "method": "tools/call",
+      "params": {
+        "name": "list_todos",
+        "arguments": {}
+      }
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const res = pm.response.json();
+    pm.test('JSON-RPC result', () => { pm.expect(res.jsonrpc).to.eql('2.0'); pm.expect(res).to.have.property('result'); });
+    const r = res.result;
+    pm.test('Tool succeeded', () => pm.expect(r.isError).to.eql(false));
+    pm.test('Text content mirrors structuredContent', () => pm.expect(JSON.parse(r.content[0].text)).to.eql(r.structuredContent));
+    pm.test('Main user\'s todo is not listed', () => pm.expect(r.structuredContent.todos.map(t => t.id)).to.not.include(Number(pm.collectionVariables.get('mcpIsoId'))));
+    pm.test('Every item belongs to the other user', () => r.structuredContent.todos.forEach(t => pm.expect(t.ownerEmail).to.eql(pm.collectionVariables.get('otherEmail'))));
+  language: text/javascript
+order: 7000

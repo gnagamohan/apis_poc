@@ -1,0 +1,23 @@
+$kind: http-request
+name: Tampered token -> 401
+url: '{{baseUrl}}/api/todos'
+method: GET
+headers:
+  Authorization: Bearer {{tamperedToken}}
+scripts:
+- type: beforeRequest
+  code: |-
+    // Change the email claim but keep the original signature: the gateway must reject it
+    const [h, p, s] = pm.collectionVariables.get('accessToken').split('.');
+    const b64 = p.replace(/-/g, '+').replace(/_/g, '/');
+    const claims = JSON.parse(atob(b64 + '='.repeat((4 - b64.length % 4) % 4)));
+    claims.email = 'someone.else@example.com';
+    const forged = btoa(JSON.stringify(claims)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    pm.collectionVariables.set('tamperedToken', [h, forged, s].join('.'));
+  language: text/javascript
+- type: afterResponse
+  code: |-
+    pm.test('401 Unauthorized', () => pm.response.to.have.status(401));
+    pm.test('invalid_token error', () => pm.expect(pm.response.headers.get('WWW-Authenticate')).to.include('invalid_token'));
+  language: text/javascript
+order: 3000

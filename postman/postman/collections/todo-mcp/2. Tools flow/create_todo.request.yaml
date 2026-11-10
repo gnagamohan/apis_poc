@@ -1,0 +1,40 @@
+$kind: http-request
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 10,
+      "method": "tools/call",
+      "params": {
+        "name": "create_todo",
+        "arguments": {
+          "title": "Try the MCP server",
+          "description": "from Postman"
+        }
+      }
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const res = pm.response.json();
+    pm.test('JSON-RPC result', () => { pm.expect(res.jsonrpc).to.eql('2.0'); pm.expect(res).to.have.property('result'); });
+    const r = res.result;
+    pm.test('Tool succeeded', () => pm.expect(r.isError).to.eql(false));
+    pm.test('Text content mirrors structuredContent', () => pm.expect(JSON.parse(r.content[0].text)).to.eql(r.structuredContent));
+    pm.test('Created with id, owned by me', () => {
+      pm.expect(r.structuredContent.id).to.be.a('number');
+      pm.expect(r.structuredContent.completed).to.eql(false);
+      pm.expect(r.structuredContent.ownerEmail).to.eql(pm.collectionVariables.get('userEmail').toLowerCase());
+    });
+    pm.collectionVariables.set('mcpTodoId', r.structuredContent.id);
+  language: text/javascript
+order: 1000

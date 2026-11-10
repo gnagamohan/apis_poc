@@ -1,0 +1,28 @@
+$kind: http-request
+name: unknown tool -> -32602
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 22,
+      "method": "tools/call",
+      "params": {
+        "name": "no_such_tool",
+        "arguments": {}
+      }
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    pm.test('Invalid params error', () => pm.expect(pm.response.json().error.code).to.eql(-32602));
+  language: text/javascript
+order: 4000

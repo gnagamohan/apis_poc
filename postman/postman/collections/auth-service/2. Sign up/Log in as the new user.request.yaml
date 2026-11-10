@@ -1,0 +1,25 @@
+$kind: http-request
+url: '{{baseUrl}}/auth/login'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{signupEmail}}",
+      "password": "{{signupPassword}}"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    function jwtPart(token, i) {
+      const b64 = token.split('.')[i].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(b64 + '='.repeat((4 - b64.length % 4) % 4)));
+    }
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const body = pm.response.json();
+    pm.test('email claim is the new user', () => pm.expect(jwtPart(body.access_token, 1).email).to.eql(pm.collectionVariables.get('signupEmail').toLowerCase()));
+    pm.collectionVariables.set('signupToken', body.access_token);
+  language: text/javascript
+order: 2000

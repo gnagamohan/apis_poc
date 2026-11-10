@@ -1,0 +1,34 @@
+$kind: http-request
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "{{protocolVersion}}",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "postman",
+          "version": "1.0.0"
+        }
+      }
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const res = pm.response.json();
+    pm.test('JSON-RPC result', () => { pm.expect(res.jsonrpc).to.eql('2.0'); pm.expect(res).to.have.property('result'); });
+    pm.test('Negotiates protocol version', () => pm.expect(res.result.protocolVersion).to.eql(pm.collectionVariables.get('protocolVersion')));
+    pm.test('Advertises tools capability', () => pm.expect(res.result.capabilities).to.have.property('tools'));
+    pm.test('Server info', () => pm.expect(res.result.serverInfo.name).to.eql('todo-mcp'));
+  language: text/javascript
+order: 2000

@@ -1,0 +1,17 @@
+$kind: collection
+description: |-
+  MCP (Streamable HTTP) checks for the Play todo-mcp server: nginx /mcp -> gateway (JWT required) -> todo-mcp -> gateway /api/todos -> todo-service.
+
+  Run top to bottom (Collection Runner or `npx newman run`). **login** gets a JWT (valid 10 minutes) into `accessToken`; every MCP request sends it as a Bearer token, and todo-mcp forwards it to the REST API, so the tools act as that user. **create_todo** stores the new id in `mcpTodoId`.
+
+  **4. Other users** signs up a fresh user (unique email per run; not deleted) and checks the MCP tools can't see or delete the main user's to-do with that user's token.
+variables:
+  baseUrl: http://localhost
+  protocolVersion: '2025-11-25'
+  mcpTodoId: '1'
+  mcpIsoId: ''
+  userEmail: demo@example.com
+  userPassword: demo-password
+  accessToken: ''
+  otherEmail: ''
+  otherToken: ''

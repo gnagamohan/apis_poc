@@ -1,0 +1,19 @@
+$kind: http-request
+name: invalid JSON -> 400 - -32700
+url: '{{baseUrl}}/mcp'
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json, text/event-stream
+  Authorization: Bearer {{accessToken}}
+  MCP-Protocol-Version: '{{protocolVersion}}'
+body:
+  type: json
+  content: '{ this is not json'
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('400', () => pm.response.to.have.status(400));
+    pm.test('Parse error', () => pm.expect(pm.response.json().error.code).to.eql(-32700));
+  language: text/javascript
+order: 6000

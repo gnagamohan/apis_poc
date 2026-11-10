@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>apis_poc</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 48px auto; padding: 0 16px; color: #222; background: #fff; }
+    h1 { font-size: 1.6rem; margin-bottom: 4px; }
+    p.sub { color: #666; margin-top: 0; }
+    a.card { display: block; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; text-decoration: none; color: inherit; }
+    a.card:hover { border-color: #888; }
+    a.card strong { display: block; margin-bottom: 4px; }
+    code { background: #f3f3f3; padding: 1px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>apis_poc</h1>
+  <p class="sub">nginx entry point</p>
+
+  <a class="card" href="/pgadmin/">
+    <strong>pgAdmin</strong>
+    <code>/pgadmin/</code> - PostgreSQL (pgvector) admin UI
+  </a>
+
+  <a class="card" href="/login">
+    <strong>Get a token</strong>
+    <code>/login</code> - log in with email and password, then copy the JWT
+  </a>
+
+  <div class="card">
+    <strong>Login (auth-service)</strong>
+    <code>POST /auth/login</code> - {"email", "password"} returns a JWT valid for 10 minutes;
+    also <code>/auth/signup</code>, <code>/auth/password-reset/request</code>, <code>/auth/password-reset/confirm</code>,
+    <code>/auth/password/change</code> (JWT)
+  </div>
+
+  <a class="card" href="/mailpit/">
+    <strong>Mailpit</strong>
+    <code>/mailpit/</code> - dev mail catcher: password-reset and password-changed emails land here
+  </a>
+
+  <div class="card">
+    <strong>To-do API (via Spring Cloud Gateway, JWT required)</strong>
+    <code>/api/todos</code> - GET, POST, PUT /{id}, DELETE /{id} with <code>Authorization: Bearer &lt;token&gt;</code>
+  </div>
+
+  <div class="card">
+    <strong>To-do MCP server (Play, via gateway, JWT required)</strong>
+    <code>http://localhost/mcp</code> - Streamable HTTP; tools: list_todos, get_todo, create_todo, update_todo, delete_todo
+  </div>
+</body>
+</html>

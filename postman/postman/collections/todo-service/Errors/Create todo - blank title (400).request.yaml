@@ -1,0 +1,19 @@
+$kind: http-request
+url: '{{baseUrl}}/api/todos'
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: json
+  content: |-
+    {
+      "title": ""
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('400 Bad Request', () => pm.response.to.have.status(400));
+    pm.test('Problem detail body', () => pm.expect(pm.response.json().status).to.eql(400));
+  language: text/javascript
+order: 1000

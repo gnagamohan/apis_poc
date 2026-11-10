@@ -1,0 +1,11 @@
+$kind: http-request
+name: No token -> 401
+url: '{{baseUrl}}/api/todos'
+method: GET
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('401 Unauthorized', () => pm.response.to.have.status(401));
+    pm.test('WWW-Authenticate: Bearer', () => pm.expect(pm.response.headers.get('WWW-Authenticate')).to.match(/^Bearer/));
+  language: text/javascript
+order: 2000

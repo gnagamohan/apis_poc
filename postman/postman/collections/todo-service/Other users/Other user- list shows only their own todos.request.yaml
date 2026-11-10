@@ -1,0 +1,15 @@
+$kind: http-request
+name: 'Other user: list shows only their own todos'
+url: '{{baseUrl}}/api/todos'
+method: GET
+headers:
+  Authorization: Bearer {{otherToken}}
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('200 OK', () => pm.response.to.have.status(200));
+    const list = pm.response.json();
+    pm.test('Main user\'s todo is not listed', () => pm.expect(list.map(t => String(t.id))).to.not.include(String(pm.collectionVariables.get('isoTodoId'))));
+    pm.test('Every item belongs to the other user', () => list.forEach(t => pm.expect(t.ownerEmail).to.eql(pm.collectionVariables.get('otherEmail'))));
+  language: text/javascript
+order: 8000

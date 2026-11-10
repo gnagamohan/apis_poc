@@ -1,0 +1,36 @@
+$kind: http-request
+url: '{{baseUrl}}/auth/signup'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{signupEmail}}",
+      "password": "{{signupPassword}}"
+    }
+scripts:
+- type: beforeRequest
+  code: |-
+    // A fresh, unique email on every run (mixed case: it is stored lower-cased)
+    pm.collectionVariables.set('signupEmail', `New.User.${Date.now()}@Example.com`);
+    pm.collectionVariables.set('signupPassword', 'signup-password-1');
+  language: text/javascript
+- type: afterResponse
+  code: |-
+    pm.test('201 Created', () => pm.response.to.have.status(201));
+    const u = pm.response.json();
+    pm.test('Returns the new user', () => {
+      pm.expect(u.id).to.be.a('number');
+      pm.expect(u.email).to.eql(pm.collectionVariables.get('signupEmail').toLowerCase());
+      pm.expect(new Date(u.createdAt).toString()).to.not.eql('Invalid Date');
+    });
+    pm.test('Never returns the password or its hash', () => {
+      pm.expect(u).to.not.have.property('password');
+      pm.expect(u).to.not.have.property('passwordHash');
+      pm.expect(u).to.not.have.property('password_hash');
+    });
+    pm.test('Cache-Control: no-store', () => pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'));
+  language: text/javascript
+order: 1000
